@@ -33,6 +33,8 @@
 #endif
 #include <pcl/common/common_headers.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/passthrough.h>
 
 // Sample includes
 #include <thread>
@@ -63,16 +65,24 @@ sl::Resolution cloud_res;
 
 int main(int argc, char **argv) {
 
-    if (argc > 2) {
-        cout << "Only the path of a SVO can be passed in arg" << endl;
+    if (argc > 4) {
+        cout << "check arg options" << endl;
         return -1;
     }
 
+    // PCL filter
+    double x_min = -300;
+    double x_max =  300;
+
     // Set configuration parameters
     InitParameters init_params;
-    if (argc == 2)
+    if (argc == 2) {
         init_params.input.setFromSVOFile(argv[1]);
-    else {
+    } else if (argc == 4) {
+        init_params.input.setFromSVOFile(argv[1]);
+        x_min = atof(argv[2]);
+        x_max = atof(argv[3]);
+    } else {
         init_params.camera_resolution = RESOLUTION::HD720;
         init_params.camera_fps = 30;
     }
@@ -96,6 +106,13 @@ int main(int argc, char **argv) {
 
     // Create the PCL point cloud visualizer
     shared_ptr<pcl::visualization::PCLVisualizer> viewer = createRGBVisualizer(p_pcl_point_cloud);
+
+    // Create the filtering object
+    // http://pointclouds.org/documentation/tutorials/passthrough.php
+    // red (x), green (y), and blue (z)
+    pcl::PassThrough<pcl::PointXYZRGB> pass;
+    pass.setFilterFieldName("x");
+    pass.setFilterLimits(x_min, x_max);
 
     // Start ZED callback
     startZED();
@@ -121,6 +138,10 @@ int main(int argc, char **argv) {
                 }
                 index += 4;
             }
+
+            // Filter point cloud
+            pass.setInputCloud(p_pcl_point_cloud);
+            pass.filter(*p_pcl_point_cloud);
 
             // Unlock data and update Point cloud
             mutex_input.unlock();

@@ -51,6 +51,8 @@ std::thread zed_callback;
 std::mutex mutex_input;
 bool stop_signal;
 bool has_data;
+double sleep_time_ms = 0.5; // 1.0
+sl::Resolution cloud_res;
 
 // Sample functions
 void startZED();
@@ -59,10 +61,9 @@ void closeZED();
 shared_ptr<pcl::visualization::PCLVisualizer> createRGBVisualizer(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud);
 inline float convertColor(float colorIn);
 
-sl::Resolution cloud_res;
-
-// Main process
-
+/**
+ *  Main process
+ **/
 int main(int argc, char **argv) {
 
     if (argc > 4) {
@@ -140,15 +141,17 @@ int main(int argc, char **argv) {
             }
 
             // Filter point cloud
-            pass.setInputCloud(p_pcl_point_cloud);
-            pass.filter(*p_pcl_point_cloud);
+            if (x_max - x_min > 0) {
+                pass.setInputCloud(p_pcl_point_cloud);
+                pass.filter(*p_pcl_point_cloud);
+            }
 
             // Unlock data and update Point cloud
             mutex_input.unlock();
             viewer->updatePointCloud(p_pcl_point_cloud);
-            viewer->spinOnce(10);
+            viewer->spinOnce(5); // 10
         } else
-            sleep_ms(1);
+            sleep_ms(sleep_time_ms);
     }
 
     // Close the viewer
@@ -171,7 +174,7 @@ void startZED() {
 
     //Wait for data to be grabbed
     while (!has_data)
-        sleep_ms(1);
+        sleep_ms(sleep_time_ms);
 }
 
 /**
@@ -185,7 +188,7 @@ void run() {
             mutex_input.unlock();
             has_data = true;
         } else
-            sleep_ms(1);
+            sleep_ms(sleep_time_ms);
     }
 }
 
